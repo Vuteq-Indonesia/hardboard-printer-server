@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hardboard Production System</title>
+  <link href="css/bootstrap.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+  <style>
+    html, body {
+      height: 100%;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #logBox {
+      height: 400px;
+      overflow-y: auto;
+      background-color: #f8f9fa;
+      padding: 10px;
+      border: 1px solid #dee2e6;
+      font-family: monospace;
+    }
+    #logo {
+      max-height: 100px;
+      margin-bottom: 20px;
+    }
+    #printArea {
+      display: none;
+    }
+    @media print {
+      @page {
+        margin: 0;
+        size: auto;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body * {
+        visibility: hidden;
+      }
+      #printArea {
+        display: block;
+        visibility: visible;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 1.2cm;
+        height: 1.2cm;
+        margin: 0;
+        padding: 0;
+      }
+      #printArea canvas {
+        width: 1.2cm;
+        height: 1.2cm;
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header class="container mt-4 text-center">
+  <img src="img/logo.png" id="logo" alt="Logo">
+  <h1 class="mb-4">Hardboard Production System</h1>
+</header>
+
+<main>
+  <div class="card w-100" style="max-width: 800px;">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h4 class="mb-0">Printer Command Control</h4>
+      <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#configModal">Config</button>
+    </div>
+    <div class="card-body">
+      <h5>Status Koneksi ke RMQ Server</h5>
+      <ul class="list-group mb-3">
+        <li class="list-group-item">Server: <strong id="serverText">10.10.10.10</strong></li>
+        <li class="list-group-item">Credential: <strong id="credentialText">ansei / ansei</strong></li>
+        <li class="list-group-item">Queue: <strong id="queueText">test_print</strong></li>
+        <li class="list-group-item">
+          Status:
+          <span id="connectionStatus" class="badge bg-secondary">Disconnected</span>
+          <button id="startBtn" class="btn btn-success btn-sm ms-2">Start</button>
+          <button id="stopBtn" class="btn btn-danger btn-sm ms-2" disabled>Stop</button>
+        </li>
+      </ul>
+      <h5>Log</h5>
+      <div id="logBox"></div>
+    </div>
+  </div>
+</main>
+
+<footer class="text-center py-3 bg-light">
+  <small>Created by Irfan Akbari H</small>
+</footer>
+
+<!-- Config Modal -->
+<div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="configForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="configModalLabel">Konfigurasi RMQ</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="serverInput" class="form-label">Server IP</label>
+            <input type="text" class="form-control" id="serverInput" required>
+          </div>
+          <div class="mb-3">
+            <label for="usernameInput" class="form-label">Username</label>
+            <input type="text" class="form-control" id="usernameInput" required>
+          </div>
+          <div class="mb-3">
+            <label for="passwordInput" class="form-label">Password</label>
+            <input type="text" class="form-control" id="passwordInput" required>
+          </div>
+          <div class="mb-3">
+            <label for="queueInput" class="form-label">Queue</label>
+            <input type="text" class="form-control" id="queueInput" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div id="printArea"></div>
+
+<script src="js/bootstrap.bundle.js"></script>
+<script>
+  const statusBadge = document.getElementById('connectionStatus');
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const logBox = document.getElementById('logBox');
+  const serverText = document.getElementById('serverText');
+  const credentialText = document.getElementById('credentialText');
+  const queueText = document.getElementById('queueText');
+  const serverInput = document.getElementById('serverInput');
+  const usernameInput = document.getElementById('usernameInput');
+  const passwordInput = document.getElementById('passwordInput');
+  const queueInput = document.getElementById('queueInput');
+
+  let client = null;
+  let retryInterval = null;
+
+  function loadConfig() {
+    const config = JSON.parse(localStorage.getItem('rmqConfig')) || {
+      server: '10.10.10.10',
+      username: 'ansei',
+      password: 'ansei',
+      queue: 'test_print'
+    };
+    serverText.textContent = config.server;
+    credentialText.textContent = `${config.username} / ${config.password}`;
+    queueText.textContent = config.queue;
+    serverInput.value = config.server;
+    usernameInput.value = config.username;
+    passwordInput.value = config.password;
+    queueInput.value = config.queue;
+  }
+
+  function connectToRMQ() {
+    const config = JSON.parse(localStorage.getItem('rmqConfig'));
+    const ws = new WebSocket(`ws://${config.server}:15674/ws`);
+    client = Stomp.over(ws);
+
+    client.connect(config.username, config.password, () => {
+      statusBadge.textContent = 'Connected';
+      statusBadge.className = 'badge bg-success';
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      addLog('Koneksi ke RMQ berhasil dimulai...');
+      clearInterval(retryInterval);
+      retryInterval = null;
+
+      client.subscribe(`/queue/${config.queue}`, (message) => {
+        addReceivedLog(message.body);
+      });
+    }, (error) => {
+      addLog(`Gagal konek: ${error}. Coba lagi dalam 3 detik...`);
+      if (!retryInterval) {
+        retryInterval = setInterval(() => {
+          addLog('Mencoba koneksi ulang ke RMQ...');
+          connectToRMQ();
+        }, 3000);
+      }
+    });
+  }
+
+  startBtn.addEventListener('click', () => {
+    connectToRMQ();
+  });
+
+  stopBtn.addEventListener('click', () => {
+    if (client) {
+      client.disconnect(() => {
+        addLog('Koneksi ke RMQ dihentikan.');
+      });
+    }
+    clearInterval(retryInterval);
+    retryInterval = null;
+    statusBadge.textContent = 'Disconnected';
+    statusBadge.className = 'badge bg-secondary';
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+  });
+
+  document.getElementById('configForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const config = {
+      server: serverInput.value,
+      username: usernameInput.value,
+      password: passwordInput.value,
+      queue: queueInput.value
+    };
+    localStorage.setItem('rmqConfig', JSON.stringify(config));
+    loadConfig();
+    addLog('Konfigurasi disimpan.');
+    const modal = bootstrap.Modal.getInstance(document.getElementById('configModal'));
+    modal.hide();
+  });
+
+  function addLog(message) {
+    const time = new Date().toLocaleTimeString();
+    logBox.innerHTML += `<div>[${time}] ${message}</div>`;
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  function addReceivedLog(message) {
+    const time = new Date().toLocaleTimeString();
+    try {
+      const parsed = JSON.parse(message);
+      logBox.innerHTML += `<div style="color: green;">[${time}] Data Diterima: ${parsed.data}</div>`;
+      const printArea = document.getElementById('printArea');
+      printArea.innerHTML = "Hehehehe";
+      // QRCode.toCanvas(document.createElement('canvas'), parsed.data, { margin: 0 }, function (error, canvas) {
+      //   if (error) {
+      //     addLog("Gagal generate QR: " + error);
+      //     return;
+      //   }
+      //   printArea.appendChild(canvas);
+      //   window.print();
+      // });
+      window.print();
+
+    } catch (e) {
+      logBox.innerHTML += `<div style="color: red;">[${time}] Gagal parsing data: ${message}</div>`;
+    }
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  loadConfig();
+</script>
+
+</body>
+</html>
