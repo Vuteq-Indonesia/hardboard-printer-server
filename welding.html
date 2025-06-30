@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hardboard Production System</title>
+    <link href="css/bootstrap.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+    <style>
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            display: flex;
+            padding: 80px;
+            flex-direction: column;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #logBox {
+            height: 400px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            font-family: monospace;
+        }
+
+        #logBox {
+            text-align: left;
+        }
+
+
+        #logo {
+            max-height: 100px;
+            margin-bottom: 20px;
+        }
+
+        #datetime {
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        footer {
+            padding: 5px 10px;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #inputBox {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.5rem;
+            border: 2px solid #ced4da;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        #inputBox:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 10px rgba(13,110,253,0.5);
+            outline: none;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<header class="container mt-4 text-center position-relative">
+    <button id="fullscreenBtn" class="btn btn-outline-secondary btn-sm position-absolute" style="left: 10px; top: 10px;">
+        <i class="bi bi-arrows-fullscreen"></i>
+    </button>
+    <img src="img/logo.png" id="logo" alt="Logo">
+    <h1 class="mb-2">Hardboard Production System</h1>
+    <div id="datetime" class="text-muted"></div>
+</header>
+
+<main>
+    <div class="card w-100" style="max-width: 800px;">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0" id="titleText">{#APP_NAME} Sub Process</h4>
+            <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#configModal">Config</button>
+        </div>
+        <div class="card-body text-center">
+            <input type="text" id="inputBox" class="form-control mb-3" placeholder="Scan Barcode Here...">
+            <div id="logBox"></div>
+        </div>
+    </div>
+</main>
+
+<!-- Config Modal -->
+<div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="configForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="configModalLabel">Konfigurasi Proses</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="titleInput" class="form-label">Judul Aplikasi</label>
+                        <input type="text" class="form-control" id="titleInput" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="processSelect" class="form-label">Pilih Sub Process</label>
+                        <select class="form-select" id="processSelect" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="operatorInput" class="form-label">Nama Operator</label>
+                        <input type="text" class="form-control" id="operatorInput" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="leatherLotInput" class="form-label">Leather Lot Number</label>
+                        <input type="text" class="form-control" id="leatherLotInput">
+                    </div>
+                    <div class="mb-3">
+                        <label for="urethaneLotInput" class="form-label">Urethane Lot Number</label>
+                        <input type="text" class="form-control" id="urethaneLotInput">
+                    </div>
+                    <div class="mb-3">
+                        <label for="serverIp" class="form-label">Server Hostname</label>
+                        <input type="text" class="form-control" id="serverIp" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status Koneksi Internet</label>
+                        <div id="connectionStatusText" class="fw-bold text-secondary">Mengecek...</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<footer>
+    <small>Created by Irfan Akbari H</small>
+</footer>
+
+<script src="js/bootstrap.bundle.js"></script>
+<script>
+    const logBox = document.getElementById('logBox');
+    const inputBox = document.getElementById('inputBox');
+    const configForm = document.getElementById('configForm');
+    const processSelect = document.getElementById('processSelect');
+    const connectionStatusText = document.getElementById('connectionStatusText');
+    const titleText = document.getElementById('titleText');
+    const datetimeEl = document.getElementById('datetime');
+
+    let config = JSON.parse(localStorage.getItem('processConfig')) || null;
+
+    function getBaseUrl() {
+        return `${config.serverIp}`;
+    }
+    function saveConfig(newConfig) {
+        config = newConfig;
+        localStorage.setItem('processConfig', JSON.stringify(config));
+        titleText.textContent = config.title;
+    }
+
+    function log(message) {
+        const time = new Date().toLocaleTimeString();
+        const isError = message.toLowerCase().includes('error');
+
+        logBox.innerHTML += `<div style="color: ${isError ? 'red' : 'inherit'};">${time} - ${message}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+
+    async function loadProcessOptions() {
+        try {
+            const response = await fetch('http://localhost:12000/v1/process');
+            const result = await response.json();
+            processSelect.innerHTML = '';
+            result.data.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = p.processName;
+                processSelect.appendChild(option);
+            });
+
+            if (config) {
+                processSelect.value = config.processId;
+                document.getElementById('operatorInput').value = config.operator;
+                document.getElementById('serverIp').value = config.serverIp;
+                document.getElementById('leatherLotInput').value = config.leatherLotNumber || '';
+                document.getElementById('urethaneLotInput').value = config.urethaneLotNumber || '';
+                document.getElementById('titleInput').value = config.title;
+                titleText.textContent = config.title;
+            }
+
+        } catch (err) {
+            log('Error fetching process list');
+        }
+    }
+
+    async function checkConnection() {
+        try {
+            await fetch('https://www.google.com', { mode: 'no-cors' });
+            connectionStatusText.textContent = 'Terhubung';
+            connectionStatusText.classList.remove('text-secondary');
+            connectionStatusText.classList.add('text-success');
+        } catch (err) {
+            connectionStatusText.textContent = 'Tidak Terhubung';
+            connectionStatusText.classList.remove('text-success');
+            connectionStatusText.classList.add('text-danger');
+        }
+    }
+
+    configForm.addEventListener('submit', e => {
+        e.preventDefault();
+        saveConfig({
+            title: document.getElementById('titleInput').value,
+            processId: processSelect.value,
+            operator: document.getElementById('operatorInput').value,
+            serverIp: document.getElementById('serverIp').value,
+            leatherLotNumber: document.getElementById('leatherLotInput').value,
+            urethaneLotNumber: document.getElementById('urethaneLotInput').value
+        });
+        log('Konfigurasi disimpan');
+        bootstrap.Modal.getInstance(document.getElementById('configModal')).hide();
+    });
+
+    inputBox.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (!config) {
+                alert('Harap konfigurasi terlebih dahulu');
+                return;
+            }
+
+            const scannedValue = inputBox.value.trim();
+            if (!scannedValue) return;
+
+            fetch(`${getBaseUrl()}/production/process`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    barcode: scannedValue,
+                    processTypeId: parseInt(config.processId),
+                    operator: config.operator,
+                    leatherLotNumber: config.leatherLotNumber || undefined,
+                    urethaneLotNumber: config.urethaneLotNumber || undefined
+                })
+            })
+                .then(async res => {
+                    if (!res.ok) {
+                        const errorData = await res.json();
+                        throw new Error(`HTTP ${res.status} - ${errorData.message || 'Unknown Error'}`);
+                    }
+                    return res.json();
+                })
+                .then(data => log(`Submitted: ${scannedValue} - ${data.message || 'Success'}`))
+                .catch(err => log(`Error: ${err.message}`));
+
+
+            inputBox.value = '';
+        }
+    });
+
+    document.getElementById('fullscreenBtn').addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProcessOptions();
+        checkConnection();
+        if (config) {
+            titleText.textContent = config.title;
+        }
+        updateDateTime();
+        updateConnectionStatusText();
+        inputBox.focus();
+        setInterval(maintainFocus, 500); // Cek tiap 0.5 detik, kalau fokus ilang, balikin lagi
+    });
+
+    function updateConnectionStatusText() {
+        if (navigator.onLine) {
+            connectionStatusText.textContent = 'Online';
+            connectionStatusText.classList.remove('text-danger');
+            connectionStatusText.classList.add('text-success');
+        } else {
+            connectionStatusText.textContent = 'Offline';
+            connectionStatusText.classList.remove('text-success');
+            connectionStatusText.classList.add('text-danger');
+        }
+    }
+
+    function maintainFocus() {
+        if (document.activeElement !== inputBox) {
+            inputBox.focus();
+        }
+    }
+
+    function updateDateTime() {
+        const now = new Date();
+        datetimeEl.textContent = now.toLocaleString();
+    }
+    setInterval(updateDateTime, 1000);
+    updateDateTime();
+</script>
+
+</body>
+
+</html>
