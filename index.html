@@ -8,15 +8,16 @@
   <link href="css/bootstrap.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
   <style>
-    html,
-    body {
+    html, body {
       height: 100%;
     }
 
     body {
       display: flex;
+      padding: 80px;
       flex-direction: column;
     }
 
@@ -29,7 +30,7 @@
     }
 
     #logBox {
-      height: 400px;
+      height: 300px;
       overflow-y: auto;
       background-color: #f8f9fa;
       padding: 10px;
@@ -41,76 +42,137 @@
       max-height: 100px;
       margin-bottom: 20px;
     }
+
+    #datetime {
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    footer {
+      padding: 5px 10px;
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
   </style>
 </head>
 
 <body>
-
-<header class="container mt-4 text-center">
+<header class="container mt-4 text-center position-relative">
+  <button id="fullscreenBtn" class="btn btn-outline-secondary btn-sm position-absolute" style="left: 10px; top: 10px;">
+    <i class="bi bi-arrows-fullscreen"></i>
+  </button>
   <img src="img/logo.png" id="logo" alt="Logo">
-  <h1 class="mb-4">Hardboard Production System</h1>
+  <h1 class="mb-2">Hardboard Production System</h1>
+  <div id="datetime" class="text-muted"></div>
 </header>
 
 <main>
-  <div class="card w-100" style="max-width: 800px;">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h4 class="mb-0">Printer Command Control</h4>
-      <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#configModal">Config</button>
-    </div>
-    <div class="card-body">
-      <h5>Status Koneksi ke RMQ Server</h5>
-      <ul class="list-group mb-3">
-        <li class="list-group-item">Server: <strong id="serverText">10.10.10.10</strong></li>
-        <li class="list-group-item">Credential: <strong id="credentialText">ansei / ansei</strong></li>
-        <li class="list-group-item">Queue: <strong id="queueText">test_print</strong></li>
-        <li class="list-group-item">
-          Status:
-          <span id="connectionStatus" class="badge bg-secondary">Disconnected</span>
-          <button id="startBtn" class="btn btn-success btn-sm ms-2">Start</button>
-          <button id="stopBtn" class="btn btn-danger btn-sm ms-2" disabled>Stop</button>
-        </li>
-      </ul>
-      <h5>Log</h5>
-      <div id="logBox"></div>
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Printer Command Control</h4>
+            <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#configModal">Config</button>
+          </div>
+          <div class="card-body">
+            <h5>Status Koneksi ke Rabbit MQ Server</h5>
+            <ul class="list-group mb-3">
+              <li class="list-group-item">Server: <strong id="serverText">10.10.10.10</strong></li>
+              <li class="list-group-item">Credential: <strong id="credentialText">ansei / ansei</strong></li>
+              <li class="list-group-item">Queue: <strong id="queueText">test_print</strong></li>
+              <li class="list-group-item">
+                Status: <span id="connectionStatus" class="badge bg-secondary">Disconnected</span>
+                <button id="startBtn" class="btn btn-success btn-sm ms-2">Start</button>
+                <button id="stopBtn" class="btn btn-danger btn-sm ms-2" disabled>Stop</button>
+              </li>
+            </ul>
+            <h5>Log</h5>
+            <div id="logBox"></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-header">
+            <h4 class="mb-0">Start Production</h4>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label for="partNumberSelect" class="form-label">Part Number</label>
+              <select class="form-select" id="partNumberSelect">
+                <option value="">-- Pilih Part Number --</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="qtyInput" class="form-label">Qty</label>
+              <input type="number" class="form-control" id="qtyInput" placeholder="Masukkan Qty" min="1">
+            </div>
+            <button id="prosesBtn" class="btn btn-primary w-100">Proses</button>
+            <hr>
+            <div id="statusText" class="text-muted"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </main>
 
-<footer class="text-center py-3 bg-light">
+<footer>
   <small>Created by Irfan Akbari H</small>
 </footer>
 
 <!-- Config Modal -->
-<div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+<div class="modal fade" id="configModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <form id="configForm">
         <div class="modal-header">
-          <h5 class="modal-title" id="configModalLabel">Konfigurasi RMQ</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+          <h5 class="modal-title">Konfigurasi RMQ</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label for="serverInput" class="form-label">Server IP</label>
+            <label class="form-label">Server IP</label>
             <input type="text" class="form-control" id="serverInput" required>
           </div>
           <div class="mb-3">
-            <label for="usernameInput" class="form-label">Username</label>
+            <label class="form-label">Username</label>
             <input type="text" class="form-control" id="usernameInput" required>
           </div>
           <div class="mb-3">
-            <label for="passwordInput" class="form-label">Password</label>
+            <label class="form-label">Password</label>
             <input type="text" class="form-control" id="passwordInput" required>
           </div>
           <div class="mb-3">
-            <label for="queueInput" class="form-label">Queue</label>
+            <label class="form-label">Queue</label>
             <input type="text" class="form-control" id="queueInput" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Status Koneksi Internet</label>
+            <div id="connectionStatusText" class="fw-bold text-secondary">Mengecek...</div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="submit" class="btn btn-primary">Simpan</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Scan -->
+<div class="modal fade" id="scanModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Scan Board Part Number</h5>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="scannerInput" class="form-control" placeholder="Scan disini...">
+      </div>
     </div>
   </div>
 </div>
@@ -128,16 +190,15 @@
   const usernameInput = document.getElementById('usernameInput');
   const passwordInput = document.getElementById('passwordInput');
   const queueInput = document.getElementById('queueInput');
+  const connectionStatusText = document.getElementById('connectionStatusText');
+  const datetimeEl = document.getElementById('datetime');
 
   let client = null;
   let retryInterval = null;
 
   function loadConfig() {
     const config = JSON.parse(localStorage.getItem('rmqConfig')) || {
-      server: '10.10.10.10',
-      username: 'ansei',
-      password: 'ansei',
-      queue: 'test_print'
+      server: '10.10.10.10', username: 'ansei', password: 'ansei', queue: 'test_print'
     };
     serverText.textContent = config.server;
     credentialText.textContent = `${config.username} / ${config.password}`;
@@ -148,58 +209,7 @@
     queueInput.value = config.queue;
   }
 
-  function connectToRMQ() {
-    const config = JSON.parse(localStorage.getItem('rmqConfig'));
-    if (!config) {
-      addLog('Konfigurasi belum disimpan. Silakan isi konfigurasi terlebih dahulu.');
-      return;
-    }
-
-    const ws = new WebSocket(`ws://${config.server}:15674/ws`);
-    client = Stomp.over(ws);
-
-    client.connect(config.username, config.password, () => {
-      statusBadge.textContent = 'Connected';
-      statusBadge.className = 'badge bg-success';
-      startBtn.disabled = true;
-      stopBtn.disabled = false;
-      addLog('Koneksi ke RMQ berhasil dimulai...');
-      clearInterval(retryInterval);
-      retryInterval = null;
-
-      client.subscribe(`/queue/${config.queue}`, (message) => {
-        addReceivedLog(message.body);
-      });
-    }, (error) => {
-      addLog(`Gagal konek: ${error}. Coba lagi dalam 3 detik...`);
-      if (!retryInterval) {
-        retryInterval = setInterval(() => {
-          addLog('Mencoba koneksi ulang ke RMQ...');
-          connectToRMQ();
-        }, 3000);
-      }
-    });
-  }
-
-  startBtn.addEventListener('click', () => {
-    connectToRMQ();
-  });
-
-  stopBtn.addEventListener('click', () => {
-    if (client) {
-      client.disconnect(() => {
-        addLog('Koneksi ke RMQ dihentikan.');
-      });
-    }
-    clearInterval(retryInterval);
-    retryInterval = null;
-    statusBadge.textContent = 'Disconnected';
-    statusBadge.className = 'badge bg-secondary';
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
-  });
-
-  document.getElementById('configForm').addEventListener('submit', function (e) {
+  document.getElementById('configForm').addEventListener('submit', e => {
     e.preventDefault();
     const config = {
       server: serverInput.value,
@@ -210,37 +220,132 @@
     localStorage.setItem('rmqConfig', JSON.stringify(config));
     loadConfig();
     addLog('Konfigurasi disimpan.');
-    const modal = bootstrap.Modal.getInstance(document.getElementById('configModal'));
-    modal.hide();
+    bootstrap.Modal.getInstance(document.getElementById('configModal')).hide();
   });
 
-  function addLog(message) {
+  function connectToRMQ() {
+    const config = JSON.parse(localStorage.getItem('rmqConfig'));
+    if (!config) return addLog('Konfigurasi belum disimpan.');
+    const ws = new WebSocket(`ws://${config.server}:15674/ws`);
+    client = Stomp.over(ws);
+
+    client.connect(config.username, config.password, () => {
+      statusBadge.textContent = 'Connected';
+      statusBadge.className = 'badge bg-success';
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      addLog('Koneksi ke RMQ berhasil.');
+      clearInterval(retryInterval);
+
+      client.subscribe(`/queue/${config.queue}`, msg => addReceivedLog(msg.body));
+    }, () => {
+      addLog('Gagal konek. Coba lagi 3 detik...');
+      if (!retryInterval) retryInterval = setInterval(connectToRMQ, 3000);
+    });
+  }
+
+  startBtn.onclick = connectToRMQ;
+  stopBtn.onclick = () => {
+    if (client) client.disconnect(() => addLog('Koneksi dihentikan.'));
+    clearInterval(retryInterval);
+    statusBadge.textContent = 'Disconnected';
+    statusBadge.className = 'badge bg-secondary';
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+  };
+
+  document.getElementById('fullscreenBtn').onclick = () => {
+    document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  };
+
+  function addLog(msg) {
     const time = new Date().toLocaleTimeString();
-    logBox.innerHTML += `<div>[${time}] ${message}</div>`;
+    logBox.innerHTML += `<div>[${time}] ${msg}</div>`;
     logBox.scrollTop = logBox.scrollHeight;
   }
 
-  function addReceivedLog(message) {
+  function addReceivedLog(msg) {
     const time = new Date().toLocaleTimeString();
     try {
-      const parsed = JSON.parse(message);
+      const parsed = JSON.parse(msg);
       logBox.innerHTML += `<div style="color: green;">[${time}] Data Diterima: ${parsed.data}</div>`;
-      printQR(parsed.data);
-    } catch (e) {
-      logBox.innerHTML += `<div style="color: red;">[${time}] Gagal parsing data: ${message}</div>`;
+    } catch {
+      logBox.innerHTML += `<div style="color: red;">[${time}] Gagal parsing: ${msg}</div>`;
     }
     logBox.scrollTop = logBox.scrollHeight;
   }
 
-  function printQR(dataArray) {
-    const encodedData = encodeURIComponent(dataArray.join(','));
-    window.open(`print.html?data=${encodedData}`, '_blank', 'width=400,height=400');
+  setInterval(() => datetimeEl.textContent = new Date().toLocaleString(), 1000);
+  window.addEventListener('online', updateConnectionStatusText);
+  window.addEventListener('offline', updateConnectionStatusText);
+  function updateConnectionStatusText() {
+    const status = navigator.onLine ? 'Online' : 'Offline';
+    connectionStatusText.textContent = status;
+    connectionStatusText.className = `fw-bold ${navigator.onLine ? 'text-success' : 'text-danger'}`;
+  }
+  loadConfig();
+  updateConnectionStatusText();
+
+  // Start Production Logic
+  const partNumberSelect = document.getElementById('partNumberSelect');
+  const qtyInput = document.getElementById('qtyInput');
+  const prosesBtn = document.getElementById('prosesBtn');
+  const statusText = document.getElementById('statusText');
+  const scannerInput = document.getElementById('scannerInput');
+  const scanModal = new bootstrap.Modal(document.getElementById('scanModal'), { backdrop: 'static', keyboard: false });
+
+  let finishGoodsData = [];
+  let selectedBoardPN = '';
+
+  async function loadFinishGoods() {
+    const res = await fetch('http://localhost:12000/v1/finish-goods');
+    finishGoodsData = await res.json();
+    partNumberSelect.innerHTML = `<option value="">-- Pilih Part Number --</option>`;
+    finishGoodsData.forEach(i => partNumberSelect.innerHTML += `<option value="${i.id}">${i.partNumber} - ${i.partName}</option>`);
   }
 
+  prosesBtn.onclick = () => {
+    const fg = finishGoodsData.find(i => i.id == partNumberSelect.value);
+    const qty = parseInt(qtyInput.value);
+    if (!fg || isNaN(qty) || qty <= 0 || !fg.Board) return statusText.textContent = 'Data tidak valid.';
 
-  loadConfig();
+    selectedBoardPN = fg.Board.partNumber.replace(/-/g, '').toUpperCase();
+    statusText.textContent = `Waiting Scan Board Part Number: ${selectedBoardPN}`;
+    qtyInput.disabled = partNumberSelect.disabled = prosesBtn.disabled = true;
+    scanModal.show();
+  };
+
+  document.getElementById('scanModal').addEventListener('shown.bs.modal', () => scannerInput.focus());
+  scannerInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const scanned = scannerInput.value.replace(/-/g, '').toUpperCase();
+      if (scanned === selectedBoardPN) submitProduction();
+      else { alert(`Board Part Number Tidak Sesuai.`); resetForm(); }
+      scanModal.hide();
+    }
+  });
+
+  async function submitProduction() {
+    const fg = finishGoodsData.find(i => i.id == partNumberSelect.value);
+    const qty = parseInt(qtyInput.value);
+    const res = await fetch('http://localhost:12000/v1/production/start', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ partNumber: fg.partNumber, qty })
+    });
+    const result = await res.json();
+    statusText.textContent = res.ok ? `Production Berhasil.` : `Gagal: ${result.message}`;
+    statusText.className = res.ok ? 'text-success' : 'text-danger';
+    resetForm();
+  }
+
+  function resetForm() {
+    qtyInput.disabled = partNumberSelect.disabled = prosesBtn.disabled = false;
+    statusText.textContent = '';
+    selectedBoardPN = '';
+  }
+
+  loadFinishGoods();
 </script>
 
 </body>
-
 </html>
