@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hardboard Production System</title>
+    <link href="css/bootstrap.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+    <style>
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            display: flex;
+            padding: 80px;
+            flex-direction: column;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #logBox {
+            height: 400px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            font-family: monospace;
+        }
+
+        #logo {
+            max-height: 100px;
+            margin-bottom: 20px;
+        }
+
+        #datetime {
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        footer {
+            /* background-color: #f8f9fa; */
+            padding: 5px 10px;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="container mt-4 text-center position-relative">
+    <button id="fullscreenBtn" class="btn btn-outline-secondary btn-sm position-absolute"
+            style="left: 10px; top: 10px;">
+        <i class="bi bi-arrows-fullscreen"></i>
+    </button>
+    <img src="img/logo.png" id="logo" alt="Logo">
+    <h1 class="mb-2">Hardboard Production System</h1>
+    <div id="datetime" class="text-muted"></div>
+</header>
+
+<main>
+    <div class="card w-100" style="max-width: 800px;">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Printer Command Control</h4>
+            <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#configModal">Config</button>
+        </div>
+        <div class="card-body">
+            <h5>Status Koneksi ke Rabbit MQ Server</h5>
+            <ul class="list-group mb-3">
+                <li class="list-group-item">Server: <strong id="serverText">10.10.10.10</strong></li>
+                <li class="list-group-item">Credential: <strong id="credentialText">ansei / ansei</strong></li>
+                <li class="list-group-item">Queue: <strong id="queueText">test_print</strong></li>
+                <li class="list-group-item">
+                    Status:
+                    <span id="connectionStatus" class="badge bg-secondary">Disconnected</span>
+                    <button id="startBtn" class="btn btn-success btn-sm ms-2">Start</button>
+                    <button id="stopBtn" class="btn btn-danger btn-sm ms-2" disabled>Stop</button>
+                </li>
+            </ul>
+            <h5>Log</h5>
+            <div id="logBox"></div>
+        </div>
+    </div>
+</main>
+
+<footer>
+    <small>Created by Irfan Akbari H</small>
+</footer>
+
+<!-- Config Modal -->
+<div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="configForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="configModalLabel">Konfigurasi RMQ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="serverInput" class="form-label">Server IP</label>
+                        <input type="text" class="form-control" id="serverInput" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="usernameInput" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="usernameInput" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="passwordInput" class="form-label">Password</label>
+                        <input type="text" class="form-control" id="passwordInput" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="queueInput" class="form-label">Queue</label>
+                        <input type="text" class="form-control" id="queueInput" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status Koneksi Internet</label>
+                        <div id="connectionStatusText" class="fw-bold text-secondary">Mengecek...</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="js/bootstrap.bundle.js"></script>
+<script>
+    const statusBadge = document.getElementById('connectionStatus');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const logBox = document.getElementById('logBox');
+    const serverText = document.getElementById('serverText');
+    const credentialText = document.getElementById('credentialText');
+    const queueText = document.getElementById('queueText');
+    const serverInput = document.getElementById('serverInput');
+    const usernameInput = document.getElementById('usernameInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const queueInput = document.getElementById('queueInput');
+    const connectionStatusText = document.getElementById('connectionStatusText');
+    const datetimeEl = document.getElementById('datetime');
+
+    let client = null;
+    let retryInterval = null;
+
+    document.getElementById('fullscreenBtn').addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
+    function loadConfig() {
+        const config = JSON.parse(localStorage.getItem('rmqConfig')) || {
+            server: '10.10.10.10',
+            username: 'ansei',
+            password: 'ansei',
+            queue: 'test_print'
+        };
+        serverText.textContent = config.server;
+        credentialText.textContent = `${config.username} / ${config.password}`;
+        queueText.textContent = config.queue;
+        serverInput.value = config.server;
+        usernameInput.value = config.username;
+        passwordInput.value = config.password;
+        queueInput.value = config.queue;
+    }
+
+    function connectToRMQ() {
+        const config = JSON.parse(localStorage.getItem('rmqConfig'));
+        if (!config) {
+            addLog('Konfigurasi belum disimpan. Silakan isi konfigurasi terlebih dahulu.');
+            return;
+        }
+
+        const ws = new WebSocket(`ws://${config.server}:15674/ws`);
+        client = Stomp.over(ws);
+
+        client.connect(config.username, config.password, () => {
+            statusBadge.textContent = 'Connected';
+            statusBadge.className = 'badge bg-success';
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            addLog('Koneksi ke RMQ berhasil dimulai...');
+            clearInterval(retryInterval);
+            retryInterval = null;
+
+            client.subscribe(`/queue/${config.queue}`, (message) => {
+                addReceivedLog(message.body);
+            });
+        }, (error) => {
+            addLog(`Gagal konek: ${error}. Coba lagi dalam 3 detik...`);
+            if (!retryInterval) {
+                retryInterval = setInterval(() => {
+                    addLog('Mencoba koneksi ulang ke RMQ...');
+                    connectToRMQ();
+                }, 3000);
+            }
+        });
+    }
+
+    startBtn.addEventListener('click', () => {
+        connectToRMQ();
+    });
+
+    stopBtn.addEventListener('click', () => {
+        if (client) {
+            client.disconnect(() => {
+                addLog('Koneksi ke RMQ dihentikan.');
+            });
+        }
+        clearInterval(retryInterval);
+        retryInterval = null;
+        statusBadge.textContent = 'Disconnected';
+        statusBadge.className = 'badge bg-secondary';
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+    });
+
+    document.getElementById('configForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const config = {
+            server: serverInput.value,
+            username: usernameInput.value,
+            password: passwordInput.value,
+            queue: queueInput.value
+        };
+        localStorage.setItem('rmqConfig', JSON.stringify(config));
+        loadConfig();
+        addLog('Konfigurasi disimpan.');
+        const modal = bootstrap.Modal.getInstance(document.getElementById('configModal'));
+        modal.hide();
+    });
+
+    function addLog(message) {
+        const time = new Date().toLocaleTimeString();
+        logBox.innerHTML += `<div>[${time}] ${message}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function addReceivedLog(message) {
+        const time = new Date().toLocaleTimeString();
+        try {
+            const parsed = JSON.parse(message);
+            logBox.innerHTML += `<div style="color: green;">[${time}] Data Diterima: ${parsed.data}</div>`;
+            printQR(parsed.data);
+        } catch (e) {
+            logBox.innerHTML += `<div style="color: red;">[${time}] Gagal parsing data: ${message}</div>`;
+        }
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+    function printQR(dataArray) {
+        const encodedData = encodeURIComponent(dataArray.join(','));
+        window.open(`print.html?data=${encodedData}`, '_blank', 'width=600,height=600,top=0,left=0,toolbar=no,menubar=no,scrollbars=no,resizable=no,location=no,status=no');
+    }
+
+
+    function updateDateTime() {
+        const now = new Date();
+        datetimeEl.textContent = now.toLocaleString();
+    }
+
+    function updateConnectionStatusText() {
+        if (navigator.onLine) {
+            connectionStatusText.textContent = 'Online';
+            connectionStatusText.classList.remove('text-danger');
+            connectionStatusText.classList.add('text-success');
+        } else {
+            connectionStatusText.textContent = 'Offline';
+            connectionStatusText.classList.remove('text-success');
+            connectionStatusText.classList.add('text-danger');
+        }
+    }
+
+    setInterval(updateDateTime, 1000);
+    window.addEventListener('online', updateConnectionStatusText);
+    window.addEventListener('offline', updateConnectionStatusText);
+    updateDateTime();
+    updateConnectionStatusText();
+    loadConfig();
+</script>
+
+</body>
+
+</html>
