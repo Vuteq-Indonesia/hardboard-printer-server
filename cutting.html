@@ -31,18 +31,14 @@
         }
 
         #logBox {
-            height: 400px;
+            height: 200px;
             overflow-y: auto;
             background-color: #f8f9fa;
             padding: 10px;
             border: 1px solid #dee2e6;
             font-family: monospace;
-        }
-
-        #logBox {
             text-align: left;
         }
-
 
         #logo {
             max-height: 100px;
@@ -61,22 +57,6 @@
             justify-content: center;
             align-items: center;
         }
-
-        #inputBox {
-            width: 100%;
-            padding: 15px;
-            font-size: 1.5rem;
-            border: 2px solid #ced4da;
-            box-shadow: 0 0 5px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-        }
-
-        #inputBox:focus {
-            border-color: #0d6efd;
-            box-shadow: 0 0 10px rgba(13,110,253,0.5);
-            outline: none;
-        }
-
     </style>
 </head>
 
@@ -94,12 +74,28 @@
 <main>
     <div class="card w-100" style="max-width: 800px;">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h4 class="mb-0" id="titleText">{#APP_NAME} Sub Process</h4>
+            <h4 class="mb-0" id="titleText">{#APP_NAME} Production</h4>
             <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#configModal">Config</button>
         </div>
         <div class="card-body text-center">
-            <input type="text" id="inputBox" class="form-control mb-3" placeholder="Scan Barcode Here...">
-            <div id="logBox"></div>
+            <div class="mb-3 text-start">
+                <label for="materialSelect" class="form-label">Material</label>
+                <select id="materialSelect" class="form-select"></select>
+            </div>
+            <div class="mb-3 text-start">
+                <label for="lotInput" class="form-label">Lot Number</label>
+                <input type="text" id="lotInput" class="form-control">
+            </div>
+            <div class="mb-3 text-start">
+                <label for="quantityInput" class="form-label">Quantity</label>
+                <input type="number" id="quantityInput" class="form-control">
+            </div>
+            <div class="mb-3 text-start">
+                <label for="productionDateInput" class="form-label">Production Date</label>
+                <input type="datetime-local" id="productionDateInput" class="form-control">
+            </div>
+            <button id="submitBtn" class="btn btn-primary w-100">Submit</button>
+            <div id="logBox" class="mt-3"></div>
         </div>
     </div>
 </main>
@@ -110,7 +106,7 @@
         <div class="modal-content">
             <form id="configForm">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="configModalLabel">Konfigurasi Proses</h5>
+                    <h5 class="modal-title" id="configModalLabel">Konfigurasi</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                 </div>
                 <div class="modal-body">
@@ -119,20 +115,8 @@
                         <input type="text" class="form-control" id="titleInput" required>
                     </div>
                     <div class="mb-3">
-                        <label for="processSelect" class="form-label">Pilih Sub Process</label>
-                        <select class="form-select" id="processSelect" required></select>
-                    </div>
-                    <div class="mb-3">
                         <label for="operatorInput" class="form-label">Nama Operator</label>
                         <input type="text" class="form-control" id="operatorInput" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="leatherProdId" class="form-label">Leather Prod Number</label>
-                        <input type="text" class="form-control" id="leatherProdId">
-                    </div>
-                    <div class="mb-3">
-                        <label for="urethaneProdId" class="form-label">Urethane Prod Number</label>
-                        <input type="text" class="form-control" id="urethaneProdId">
                     </div>
                     <div class="mb-3">
                         <label for="serverIp" class="form-label">Server Hostname</label>
@@ -158,57 +142,58 @@
 <script src="js/bootstrap.bundle.js"></script>
 <script>
     const logBox = document.getElementById('logBox');
-    const inputBox = document.getElementById('inputBox');
     const configForm = document.getElementById('configForm');
-    const processSelect = document.getElementById('processSelect');
     const connectionStatusText = document.getElementById('connectionStatusText');
     const titleText = document.getElementById('titleText');
     const datetimeEl = document.getElementById('datetime');
+    const materialSelect = document.getElementById('materialSelect');
+    const lotInput = document.getElementById('lotInput');
+    const quantityInput = document.getElementById('quantityInput');
+    const productionDateInput = document.getElementById('productionDateInput');
+    const submitBtn = document.getElementById('submitBtn');
 
-    let config = JSON.parse(localStorage.getItem('processConfig')) || null;
+    let config = JSON.parse(localStorage.getItem('processConfig-cutting')) || null;
 
     function getBaseUrl() {
         return `${config.serverIp}`;
     }
+
     function saveConfig(newConfig) {
         config = newConfig;
-        localStorage.setItem('processConfig', JSON.stringify(config));
+        localStorage.setItem('processConfig-cutting', JSON.stringify(config));
         titleText.textContent = config.title;
     }
 
     function log(message) {
         const time = new Date().toLocaleTimeString();
         const isError = message.toLowerCase().includes('error');
-
         logBox.innerHTML += `<div style="color: ${isError ? 'red' : 'inherit'};">${time} - ${message}</div>`;
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-
-    async function loadProcessOptions() {
+    async function loadMaterialOptions() {
         try {
-            const response = await fetch('http://localhost:12000/v1/process');
+            const response = await fetch('http://localhost:12000/v1/materials');
             const result = await response.json();
-            processSelect.innerHTML = '';
-            result.data.forEach(p => {
-                const option = document.createElement('option');
-                option.value = p.id;
-                option.textContent = p.processName;
-                processSelect.appendChild(option);
+            materialSelect.innerHTML = '';
+
+            result.forEach(m => {
+                if (m.isCutting) {
+                    const option = document.createElement('option');
+                    option.value = m.id;
+                    option.textContent = `${m.partNumber} - ${m.partName}`;
+                    materialSelect.appendChild(option);
+                }
             });
 
             if (config) {
-                processSelect.value = config.processId;
                 document.getElementById('operatorInput').value = config.operator;
                 document.getElementById('serverIp').value = config.serverIp;
-                document.getElementById('leatherProdId').value = config.leatherLotNumber || '';
-                document.getElementById('urethaneProdId').value = config.urethaneLotNumber || '';
                 document.getElementById('titleInput').value = config.title;
                 titleText.textContent = config.title;
             }
-
         } catch (err) {
-            log('Error fetching process list');
+            log('Error fetching material list');
         }
     }
 
@@ -229,49 +214,54 @@
         e.preventDefault();
         saveConfig({
             title: document.getElementById('titleInput').value,
-            processId: processSelect.value,
             operator: document.getElementById('operatorInput').value,
-            serverIp: document.getElementById('serverIp').value,
-            leatherLotNumber: document.getElementById('leatherProdId').value,
-            urethaneLotNumber: document.getElementById('urethaneProdId').value
+            serverIp: document.getElementById('serverIp').value
         });
         log('Konfigurasi disimpan');
         bootstrap.Modal.getInstance(document.getElementById('configModal')).hide();
     });
 
-    inputBox.addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            if (!config) {
-                alert('Harap konfigurasi terlebih dahulu');
-                return;
-            }
-
-            const scannedValue = inputBox.value.trim();
-            if (!scannedValue) return;
-
-            fetch(`${getBaseUrl()}/production/process`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    barcode: scannedValue,
-                    processTypeId: parseInt(config.processId),
-                    operator: config.operator,
-                    leatherProdId: config.leatherLotNumber || undefined,
-                    urethaneProdId: config.urethaneLotNumber || undefined
-                })
-            })
-                .then(res => {
-                    if (!res.ok) {
-                        throw new Error(`HTTP ${res.status} - ${res.json().message}`);
-                    }
-                    return res.json();
-                })
-                .then(data => log(`Submitted: ${scannedValue} - ${data.message || 'Success'}`))
-                .catch(err => log(`Error: ${err.message}`));
-
-            inputBox.value = '';
+    submitBtn.addEventListener('click', () => {
+        if (!config) {
+            alert('Harap konfigurasi terlebih dahulu');
+            return;
         }
+
+        const materialId = materialSelect.value;
+        const lotNumber = lotInput.value.trim();
+        const quantity = parseInt(quantityInput.value);
+        const productionDateRaw = productionDateInput.value;
+        const productionDate = productionDateRaw ? `${productionDateRaw}:00` : '';
+
+        if (!materialId || !lotNumber || isNaN(quantity) || !productionDate) {
+            alert('Harap lengkapi semua data');
+            return;
+        }
+
+        fetch(`${getBaseUrl()}/cutting-production`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                materialId: parseInt(materialId),
+                lotNumber,
+                quantity,
+                productionDate,
+                operator: config.operator
+            })
+        })
+            .then(async res => {
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(`HTTP ${res.status} - ${errorData.message || 'Unknown Error'}`);
+                }
+                return res.json();
+            })
+            .then(data => log(`Submitted: ${lotNumber} - ${data.message || 'Success'}`))
+            .catch(err => log(`Error: ${err.message}`));
+
+        lotInput.value = '';
+        quantityInput.value = '';
+        productionDateInput.value = '';
     });
 
     document.getElementById('fullscreenBtn').addEventListener('click', () => {
@@ -283,15 +273,14 @@
     });
 
     document.addEventListener('DOMContentLoaded', () => {
-        loadProcessOptions();
+        loadMaterialOptions();
         checkConnection();
         if (config) {
             titleText.textContent = config.title;
         }
         updateDateTime();
         updateConnectionStatusText();
-        inputBox.focus();
-        setInterval(maintainFocus, 500); // Cek tiap 0.5 detik, kalau fokus ilang, balikin lagi
+        setInterval(updateDateTime, 1000);
     });
 
     function updateConnectionStatusText() {
@@ -306,23 +295,11 @@
         }
     }
 
-    function maintainFocus() {
-        const isModalOpen = document.getElementById('configModal').classList.contains('show');
-        if (isModalOpen) return;
-
-        if (document.activeElement !== inputBox) {
-            inputBox.focus();
-        }
-    }
-
     function updateDateTime() {
         const now = new Date();
         datetimeEl.textContent = now.toLocaleString();
     }
-    setInterval(updateDateTime, 1000);
-    updateDateTime();
 </script>
 
 </body>
-
 </html>
