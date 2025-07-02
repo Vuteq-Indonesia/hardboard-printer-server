@@ -268,7 +268,12 @@
                     return res.json();
                 })
                 .then(data => log(`Submitted: ${scannedValue} - ${data.message || 'Success'}`))
-                .catch(err => log(`Error: ${err.message}`));
+                .catch(err =>
+                {
+                    log(`Error: ${err.message}`)
+                    inputBox.value = '';
+                }
+        );
 
             inputBox.value = '';
         }
