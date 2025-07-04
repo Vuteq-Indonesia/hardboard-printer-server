@@ -298,7 +298,7 @@
   let selectedBoardPN = '';
 
   async function loadFinishGoods() {
-    const res = await fetch('http://localhost:12000/v1/finish-goods');
+    const res = await fetch('https://hardboard-api-796630735968.asia-southeast2.run.app/v1/finish-goods');
     finishGoodsData = await res.json();
     partNumberSelect.innerHTML = `<option value="">-- Pilih Part Number --</option>`;
     finishGoodsData.forEach(i => partNumberSelect.innerHTML += `<option value="${i.id}">${i.partNumber} - ${i.partName}</option>`);
@@ -328,7 +328,7 @@
   async function submitProduction() {
     const fg = finishGoodsData.find(i => i.id == partNumberSelect.value);
     const qty = parseInt(qtyInput.value);
-    const res = await fetch('http://localhost:12000/v1/production/start', {
+    const res = await fetch('https://hardboard-api-796630735968.asia-southeast2.run.app/v1/production/start', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ partNumber: fg.partNumber, qty })
     });
