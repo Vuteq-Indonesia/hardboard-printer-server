@@ -290,15 +290,22 @@
         const qrContent = dataArray.join(',');
 
         // Contoh perintah TSPL untuk print label ukuran 78x100mm
+        const [partNumber, productionId] = qrContent.split("#");
         const tsplCommand = `
 SIZE 78 mm, 100 mm
 GAP 3 mm, 0 mm
 DIRECTION 1
 CLS
-TEXT 50,50,"3",0,1,1,"${qrContent}"
-QRCODE 50,150,L,5,A,0,"${qrContent}"
+
+TEXT 100,50,"3",0,1,1,"Part Number: ${partNumber}"
+TEXT 100,80,"3",0,1,1,"Production ID: ${productionId}"
+
+QRCODE 220,300,L,8,A,0,"${qrContent}"
+
 PRINT 1,1
 `;
+
+
 
         const configObj = qz.configs.create(config.printer, { altPrinting: true }); // altPrinting untuk LPR bisa diaktifkan
 
