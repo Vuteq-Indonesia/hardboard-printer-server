@@ -1,3 +1,4 @@
+<!-- Full HTML dengan Autofokus Lengkap dan Beep -->
 <!DOCTYPE html>
 <html lang="en">
 
@@ -6,81 +7,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hardboard Production System</title>
     <link href="css/bootstrap.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-
     <style>
-        html,
-        body {
-            height: 100%;
-        }
-
-        body {
-            display: flex;
-            padding: 80px;
-            flex-direction: column;
-        }
-
-        main {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
+        html, body { height: 100%; }
+        body { display: flex; padding: 80px; flex-direction: column; }
+        main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; }
         #logBox {
-            height: 400px;
-            overflow-y: auto;
-            background-color: #f8f9fa;
-            padding: 10px;
-            border: 1px solid #dee2e6;
-            font-family: monospace;
+            height: 400px; overflow-y: auto; background-color: #f8f9fa;
+            padding: 10px; border: 1px solid #dee2e6; font-family: monospace; text-align: left;
         }
-
-        #logBox {
-            text-align: left;
-        }
-
-
-        #logo {
-            max-height: 100px;
-            margin-bottom: 20px;
-        }
-
-        #datetime {
-            font-size: 0.9rem;
-            color: #555;
-        }
-
-        footer {
-            padding: 5px 10px;
-            font-size: 0.85rem;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
+        #logo { max-height: 100px; margin-bottom: 20px; }
+        #datetime { font-size: 0.9rem; color: #555; }
+        footer { padding: 5px 10px; font-size: 0.85rem; display: flex; justify-content: center; align-items: center; }
         #inputBox {
-            width: 100%;
-            padding: 15px;
-            font-size: 1.5rem;
-            border: 2px solid #ced4da;
-            box-shadow: 0 0 5px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
+            width: 100%; padding: 15px; font-size: 1.5rem; border: 2px solid #ced4da;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); transition: all 0.3s ease;
         }
-
         #inputBox:focus {
-            border-color: #0d6efd;
-            box-shadow: 0 0 10px rgba(13,110,253,0.5);
-            outline: none;
+            border-color: #0d6efd; box-shadow: 0 0 10px rgba(13, 110, 253, 0.5); outline: none;
         }
-
     </style>
 </head>
 
 <body>
+<audio id="successBeep" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+<audio id="errorBeep" src="https://actions.google.com/sounds/v1/alarms/beep_warning.ogg"></audio>
 
 <header class="container mt-4 text-center position-relative">
     <button id="fullscreenBtn" class="btn btn-outline-secondary btn-sm position-absolute" style="left: 10px; top: 10px;">
@@ -94,240 +47,179 @@
 <main>
     <div class="card w-100" style="max-width: 800px;">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h4 class="mb-0" id="titleText">{#APP_NAME} Sub Process</h4>
+            <h4 class="mb-0" id="titleText">Hardboard Sub Process</h4>
             <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#configModal">Config</button>
         </div>
         <div class="card-body text-center">
-            <input type="text" id="inputBox" class="form-control mb-3" placeholder="Scan Barcode Here...">
+            <input type="text" id="inputBox" class="form-control mb-3" placeholder="Scan Barcode Here..." autofocus />
             <div id="logBox"></div>
         </div>
     </div>
 </main>
 
 <!-- Config Modal -->
-<div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true">
+<div class="modal fade" id="configModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form id="configForm">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="configModalLabel">Konfigurasi Proses</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    <h5 class="modal-title">Konfigurasi Proses</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="titleInput" class="form-label">Judul Aplikasi</label>
-                        <input type="text" class="form-control" id="titleInput" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="processSelect" class="form-label">Pilih Sub Process</label>
-                        <select class="form-select" id="processSelect" required></select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="operatorInput" class="form-label">Nama Operator</label>
-                        <input type="text" class="form-control" id="operatorInput" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="leatherProdId" class="form-label">Leather Prod Number</label>
-                        <input type="text" class="form-control" id="leatherProdId">
-                    </div>
-                    <div class="mb-3">
-                        <label for="urethaneProdId" class="form-label">Urethane Prod Number</label>
-                        <input type="text" class="form-control" id="urethaneProdId">
-                    </div>
-                    <div class="mb-3">
-                        <label for="serverIp" class="form-label">Server Hostname</label>
-                        <input type="text" class="form-control" id="serverIp" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Status Koneksi Internet</label>
-                        <div id="connectionStatusText" class="fw-bold text-secondary">Mengecek...</div>
-                    </div>
+                    <div class="mb-3"><label class="form-label">Judul Aplikasi</label><input class="form-control" id="titleInput" required></div>
+                    <div class="mb-3"><label class="form-label">Pilih Sub Process</label><select class="form-select" id="processSelect" required></select></div>
+                    <div class="mb-3"><label class="form-label">Nama Operator</label><input class="form-control" id="operatorInput" required></div>
+                    <div class="mb-3"><label class="form-label">Server Hostname</label><input class="form-control" id="serverIp" required></div>
+                    <div class="mb-3"><label class="form-label">Status Koneksi Internet</label><div id="connectionStatusText" class="fw-bold text-secondary">Mengecek...</div></div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary">Simpan</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Lot Modal -->
+<div class="modal fade" id="lotModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="lotForm">
+                <div class="modal-header"><h5 class="modal-title">Input Lot Number</h5></div>
+                <div class="modal-body">
+                    <div class="mb-3"><label class="form-label">Leather Lot</label><input class="form-control" id="leatherLotInput" required></div>
+                    <div class="mb-3"><label class="form-label">Urethane Lot</label><input class="form-control" id="urethaneLotInput" required></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Simpan</button>
+                    <button type="button" class="btn btn-secondary" id="clearLotBtn">Clear</button>
+                    <button type="submit" class="btn btn-primary">Kirim</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<footer>
-    <small>Created by Irfan Akbari H</small>
-</footer>
-
+<footer><small>Created by Irfan Akbari H</small></footer>
 <script src="js/bootstrap.bundle.js"></script>
 <script>
-    const logBox = document.getElementById('logBox');
     const inputBox = document.getElementById('inputBox');
-    const configForm = document.getElementById('configForm');
-    const processSelect = document.getElementById('processSelect');
-    const connectionStatusText = document.getElementById('connectionStatusText');
-    const titleText = document.getElementById('titleText');
-    const datetimeEl = document.getElementById('datetime');
+    const leatherLotInput = document.getElementById('leatherLotInput');
+    const urethaneLotInput = document.getElementById('urethaneLotInput');
+    const lotForm = document.getElementById('lotForm');
+    const clearLotBtn = document.getElementById('clearLotBtn');
+    const lotModalEl = document.getElementById('lotModal');
+    const lotModal = new bootstrap.Modal(lotModalEl);
+
+    const successBeep = document.getElementById('successBeep');
+    const errorBeep = document.getElementById('errorBeep');
 
     let config = JSON.parse(localStorage.getItem('processConfig')) || null;
-
-    function getBaseUrl() {
-        return `${config.serverIp}`;
-    }
-    function saveConfig(newConfig) {
-        config = newConfig;
-        localStorage.setItem('processConfig', JSON.stringify(config));
-        titleText.textContent = config.title;
-    }
-
-    function log(message) {
-        const time = new Date().toLocaleTimeString();
-        const isError = message.toLowerCase().includes('error');
-
-        logBox.innerHTML += `<div style="color: ${isError ? 'red' : 'inherit'};">${time} - ${message}</div>`;
-        logBox.scrollTop = logBox.scrollHeight;
-    }
-
-
-    async function loadProcessOptions() {
-        try {
-            const response = await fetch('https://hardboard-api-796630735968.asia-southeast2.run.app/v1/process');
-            const result = await response.json();
-            processSelect.innerHTML = '';
-            result.data.forEach(p => {
-                const option = document.createElement('option');
-                option.value = p.id;
-                option.textContent = p.processName;
-                processSelect.appendChild(option);
-            });
-
-            if (config) {
-                processSelect.value = config.processId;
-                document.getElementById('operatorInput').value = config.operator;
-                document.getElementById('serverIp').value = config.serverIp;
-                document.getElementById('leatherProdId').value = config.leatherLotNumber || '';
-                document.getElementById('urethaneProdId').value = config.urethaneLotNumber || '';
-                document.getElementById('titleInput').value = config.title;
-                titleText.textContent = config.title;
-            }
-
-        } catch (err) {
-            log('Error fetching process list');
-        }
-    }
-
-    async function checkConnection() {
-        try {
-            await fetch('https://www.google.com', { mode: 'no-cors' });
-            connectionStatusText.textContent = 'Terhubung';
-            connectionStatusText.classList.remove('text-secondary');
-            connectionStatusText.classList.add('text-success');
-        } catch (err) {
-            connectionStatusText.textContent = 'Tidak Terhubung';
-            connectionStatusText.classList.remove('text-success');
-            connectionStatusText.classList.add('text-danger');
-        }
-    }
-
-    configForm.addEventListener('submit', e => {
-        e.preventDefault();
-        saveConfig({
-            title: document.getElementById('titleInput').value,
-            processId: processSelect.value,
-            operator: document.getElementById('operatorInput').value,
-            serverIp: document.getElementById('serverIp').value,
-            leatherLotNumber: document.getElementById('leatherProdId').value,
-            urethaneLotNumber: document.getElementById('urethaneProdId').value
-        });
-        log('Konfigurasi disimpan');
-        bootstrap.Modal.getInstance(document.getElementById('configModal')).hide();
-    });
+    let scannedBarcode = null;
+    let stepFocus = 0;
 
     inputBox.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            if (!config) {
-                alert('Harap konfigurasi terlebih dahulu');
-                return;
-            }
-
-            const scannedValue = inputBox.value.trim();
-            if (!scannedValue) return;
-
-            fetch(`${getBaseUrl()}/production/process`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    barcode: scannedValue,
-                    processTypeId: parseInt(config.processId),
-                    operator: config.operator,
-                    leatherProdId: config.leatherLotNumber || undefined,
-                    urethaneProdId: config.urethaneLotNumber || undefined
-                })
-            })
-                .then(res => {
-                    if (!res.ok) {
-                        throw new Error(`HTTP ${res.status} - ${res.json().message}`);
-                    }
-                    return res.json();
-                })
-                .then(data => log(`Submitted: ${scannedValue} - ${data.message || 'Success'}`))
-                .catch(err =>
-                {
-                    log(`Error: ${err.message}`)
-                    inputBox.value = '';
-                }
-        );
-
+            if (!config) return alert('Harap konfigurasi terlebih dahulu');
+            scannedBarcode = inputBox.value.trim();
             inputBox.value = '';
+            lotModal.show();
         }
     });
 
-    document.getElementById('fullscreenBtn').addEventListener('click', () => {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen();
-        } else {
-            document.exitFullscreen();
+    document.getElementById('lotModal').addEventListener('shown.bs.modal', () => {
+        leatherLotInput.value = '';
+        urethaneLotInput.value = '';
+        stepFocus = 0;
+
+        // Tambahkan delay agar focus tidak gagal
+        setTimeout(() => {
+            leatherLotInput.focus();
+        }, 300);
+    });
+
+
+    document.getElementById('lotModal').addEventListener('hidden.bs.modal', () => {
+        inputBox.focus();
+    });
+
+    leatherLotInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (leatherLotInput.value.trim()) {
+                urethaneLotInput.focus();
+                stepFocus = 1;
+            }
         }
+    });
+
+    urethaneLotInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (urethaneLotInput.value.trim()) {
+                submitLotForm();
+            }
+        }
+    });
+
+    clearLotBtn.addEventListener('click', () => {
+        leatherLotInput.value = '';
+        urethaneLotInput.value = '';
+        leatherLotInput.focus();
+        stepFocus = 0;
+    });
+
+    function submitLotForm() {
+        const payload = {
+            barcode: scannedBarcode,
+            processTypeId: parseInt(config.processId),
+            operator: config.operator,
+            leatherProdId: leatherLotInput.value.trim(),
+            urethaneProdId: urethaneLotInput.value.trim()
+        };
+
+        fetch(`${config.serverIp}/production/process`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+            .then(res => res.ok ? res.json() : res.json().then(body => { throw new Error(body.message) }))
+            .then(data => {
+                log(`Submitted: ${scannedBarcode} - ${data.message || 'Success'}`);
+                successBeep.play();
+            })
+            .catch(err => {
+                log(`Error: ${err.message}`);
+                errorBeep.play();
+            })
+            .finally(() => {
+                scannedBarcode = null;
+                lotModal.hide();
+            });
+    }
+
+    function log(msg) {
+        const logBox = document.getElementById('logBox');
+        const time = new Date().toLocaleTimeString();
+        logBox.innerHTML += `<div>${time} - ${msg}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    setInterval(() => {
+        const isModalOpen = document.querySelector('.modal.show');
+        if (!isModalOpen && document.activeElement !== inputBox) inputBox.focus();
+    }, 500);
+
+    document.getElementById('fullscreenBtn').addEventListener('click', () => {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
     });
 
     document.addEventListener('DOMContentLoaded', () => {
-        loadProcessOptions();
-        checkConnection();
-        if (config) {
-            titleText.textContent = config.title;
-        }
-        updateDateTime();
-        updateConnectionStatusText();
+        inputBox.setAttribute('autofocus', 'true');
         inputBox.focus();
-        setInterval(maintainFocus, 500); // Cek tiap 0.5 detik, kalau fokus ilang, balikin lagi
+        setInterval(() => document.getElementById('datetime').textContent = new Date().toLocaleString(), 1000);
     });
-
-    function updateConnectionStatusText() {
-        if (navigator.onLine) {
-            connectionStatusText.textContent = 'Online';
-            connectionStatusText.classList.remove('text-danger');
-            connectionStatusText.classList.add('text-success');
-        } else {
-            connectionStatusText.textContent = 'Offline';
-            connectionStatusText.classList.remove('text-success');
-            connectionStatusText.classList.add('text-danger');
-        }
-    }
-
-    function maintainFocus() {
-        const isModalOpen = document.getElementById('configModal').classList.contains('show');
-        if (isModalOpen) return;
-
-        if (document.activeElement !== inputBox) {
-            inputBox.focus();
-        }
-    }
-
-    function updateDateTime() {
-        const now = new Date();
-        datetimeEl.textContent = now.toLocaleString();
-    }
-    setInterval(updateDateTime, 1000);
-    updateDateTime();
 </script>
-
 </body>
 
 </html>
